@@ -18,16 +18,22 @@ class Phone(Field):
         valid_number = self.check_number(value)
         super().__init__(valid_number)
 
-    def check_number(self, number):
-        ban_symbols = ["+", "(", ")", "-", " "]
-        right_phone = number
-        for phone_number in ban_symbols:
-            number = number.strip().replace(phone_number, "")
+    def is_valid_number(self, number):
+        return number.isdigit() and 10 <= len(number) <= 12
 
-        if number.isdigit() and 10 <= len(number) <= 12:
-            return right_phone
+    def check_number(self, number):
+        if self.is_valid_number(number):
+            return number
+
+        symbols_to_remove = ["+", "(", ")", "-", " "]
+
+        for symbol in symbols_to_remove:
+            number = number.strip().replace(symbol, "")
+
+        if self.is_valid_number(number):
+            return number
         else:
-            raise ValueError("Enter correct number")
+            raise ValueError("Enter correct number.")
 
 
 class Record:
@@ -51,7 +57,7 @@ class Record:
         if phone:
             new_phone_obj = Phone(new_number)
             self.phones.remove(phone)
-            self.add_phone(new_phone_obj)
+            self.phones.append(new_phone_obj)
         else:
             raise ValueError(f"Phone {old_number} not found in contacts.")
 
@@ -62,7 +68,7 @@ class Record:
         return None
 
     def __str__(self):
-        return f"Name: {self.name.value}\nPhone: {', '.join(p.value for p in self.phones)}\n{"-"*25}"
+        return f"Contact name: {self.name.value}, phones: {'; '.join(p.value for p in self.phones)}"
 
 
 class AddressBook(UserDict):
@@ -76,7 +82,7 @@ class AddressBook(UserDict):
         if name in self.data:
             del self.data[name]
             return f"Contact {name} deleted."
-        return f"Contact {name} not found"
+        return f"Contact {name} not found."
 
     def rename(self, old_name, new_name):
         if old_name not in self.data:
@@ -99,7 +105,7 @@ def input_error(func):
         try:
             return func(*args)
         except IndexError:
-            return "Error: Please provide both name and phone number."
+            return "Error: Please provide all the information."
         except ValueError as e:
             return f"Error: {e}"
     return check_errors
@@ -123,6 +129,11 @@ class Operator:
             "good bye": lambda _: "Good Bye!",
             "close": lambda _: "Good Bye!",
             "exit": lambda _: "Good Bye!"}
+        self.error_messages = [
+            "Please provide a contact name.",
+            "Please provide all the info.",
+            "Please provide name, old phone number, and new phone number."
+        ]
 
     def empty_contact_book(self):
         if len(self.contact_book) == 0:
@@ -173,10 +184,14 @@ class Operator:
             "good bye, close, exit           - Exit the program"
         )
 
+    def check_correct(self, args, error_messages, num_args):
+        if len(args) < len(error_messages) and len(args) < num_args:
+            raise ValueError(error_messages[len(args)])
+
+
     @input_error
     def add_contact(self, args):
-        if len(args) < 2:
-            raise ValueError("Please provide both name and phone number.")
+        self.check_correct(args, self.error_messages, 2)
 
         name, phone = args[0], args[1]
 
@@ -200,8 +215,7 @@ class Operator:
 
     @input_error
     def change_contact(self, args):
-        if len(args) < 1:
-            raise ValueError("Please provide a contact name.")
+        self.check_correct(args, self.error_messages, 1)
 
         name = args[0]
         record = self.contact_book.find(name)
@@ -209,8 +223,7 @@ class Operator:
         if not record:
             return f"Error: Contact {name} doesn't exist."
 
-        if len(args) < 3:
-            raise ValueError("Please provide name, old phone number, and new phone number.")
+        self.check_correct(args, self.error_messages, 3)
 
         old_phone, new_phone = args[1], args[2]
 
@@ -223,8 +236,7 @@ class Operator:
 
     @input_error
     def delete_contact(self, args):
-        if len(args) < 1:
-            raise ValueError("Please provide a contact name.")
+        self.check_correct(args, self.error_messages, 1)
 
         name = args[0]
 
@@ -232,8 +244,7 @@ class Operator:
 
     @input_error
     def rename_contact(self, args):
-        if len(args) < 2:
-            raise ValueError("Please provide old name and new name.")
+        self.check_correct(args, self.error_messages, 2)
 
         old_name, new_name = args[0], args[1]
 
@@ -243,8 +254,7 @@ class Operator:
 
     @input_error
     def remove_phone_number(self, args):
-        if len(args) < 1:
-            raise ValueError("Please provide a contact name.")
+        self.check_correct(args, self.error_messages, 1)
 
         name = args[0]
         result = self.contact_book.find(name)
@@ -252,8 +262,7 @@ class Operator:
         if not result:
             return f"Error: Contact {name} doesn't exist."
 
-        if len(args) < 2:
-            raise ValueError(f"Please provide the phone number to remove from {name}.")
+        self.check_correct(args, self.error_messages, 2)
 
         phone = args[1]
 
@@ -262,8 +271,7 @@ class Operator:
 
     @input_error
     def show_phone_number(self, args):
-        if len(args) < 1:
-            raise ValueError("Please provide a contact name.")
+        self.check_correct(args, self.error_messages, 1)
 
         name = args[0]
 
@@ -275,8 +283,7 @@ class Operator:
 
     @input_error
     def find_by_phone_number(self, args):
-        if len(args) < 1:
-            raise ValueError("Please provide a phone number to search.")
+        self.check_correct(args, self.error_messages, 1)
 
         phone = args[0]
 
